@@ -1236,8 +1236,9 @@ Main.precache = function() {
 	});
 	var state_fullscreen = "unsupported";
 	var state_orientation = "unsupported";
+	var state_accelerometer = "unsupported";
 	var update_text = function() {
-		debug_text.set_text("fullscreen : " + state_fullscreen + "\norientation: " + state_orientation);
+		debug_text.set_text("fullscreen   : " + state_fullscreen + "\norientation  : " + state_orientation + "\naccelerometer:" + state_accelerometer);
 	};
 	update_text();
 	if(!App.platform.get_display().get_isFullscreenSupported()) {
@@ -1278,6 +1279,12 @@ Main.precache = function() {
 				state_orientation = "not allowed";
 				update_text();
 			}
+		});
+	}
+	if(App.platform.isAccelerometerSupported) {
+		App.ticker.add(function(_) {
+			state_accelerometer = "x: " + App.platform.pos_x + " y: " + App.platform.pos_y + " z: " + App.platform.pos_z;
+			update_text();
 		});
 	}
 };
@@ -5217,6 +5224,7 @@ platform_Pixelbuffer.prototype = {
 	,__class__: platform_Pixelbuffer
 };
 var platform_Platform = function(app_name) {
+	this.isAccelerometerSupported = false;
 };
 platform_Platform.__name__ = ["platform","Platform"];
 platform_Platform.prototype = {
@@ -5854,7 +5862,7 @@ var platform_html5_HTML5Display = function(canvasElement) {
 	platform_Display.call(this);
 	this.canvas = canvasElement;
 	this.c_fullscreen_supported = platform_html5_HTML5Extensions.loadFirst(["fullscreenEnabled","fullScreenEnabled"],window.document).instance == true;
-	this.c_orientation_supported = platform_html5_HTML5Extensions.load("unlockOrientation",window.screen) != null;
+	this.check_orientation_support();
 	window.addEventListener("resize",$bind(this,this.event_resize),false);
 	this.resize_w_to = window.innerWidth;
 	this.resize_h_to = window.innerHeight;
@@ -5864,7 +5872,9 @@ var platform_html5_HTML5Display = function(canvasElement) {
 platform_html5_HTML5Display.__name__ = ["platform","html5","HTML5Display"];
 platform_html5_HTML5Display.__super__ = platform_Display;
 platform_html5_HTML5Display.prototype = $extend(platform_Display.prototype,{
-	requestFullscreen: function(state) {
+	check_orientation_support: function() {
+	}
+	,requestFullscreen: function(state) {
 		if(!this.c_fullscreen_supported || this.isFullscreen == state) {
 			return false;
 		}
@@ -5895,33 +5905,15 @@ platform_html5_HTML5Display.prototype = $extend(platform_Display.prototype,{
 		}
 		switch(state[1]) {
 		case 0:case 1:
-			var request = platform_html5_HTML5Extensions.load("lockOrientation",window.screen).instance;
-			if(request == null) {
-				return false;
-			} else {
-				var html_orient = state == Orientation.LANDSCAPE ? "landscape" : "portrait";
-				var allowed = request.apply(window.screen,[html_orient]);
-				if(allowed) {
-					this.orientation = state;
-				}
-				return allowed;
-			}
+			window.screen.orientation.lock(state == Orientation.LANDSCAPE ? "landscape" : "portrait");
 			break;
 		case 2:
-			var request1 = platform_html5_HTML5Extensions.load("unlockOrientation",window.screen).instance;
-			if(request1 == null) {
-				return false;
-			} else {
-				var allowed1 = request1.apply(window.screen,[]);
-				if(allowed1) {
-					this.orientation = state;
-				}
-				return allowed1;
-			}
+			window.screen.orientation.unlock();
 			break;
 		case 3:
 			return this.requestOrientation(App.WIDTH >= App.HEIGHT ? Orientation.LANDSCAPE : Orientation.PORTRAIT);
 		}
+		return true;
 	}
 	,event_resize: function() {
 		this.resize_w_to = window.innerWidth;
@@ -6311,6 +6303,17 @@ var platform_html5_HTML5Platform = function(app_name) {
 	};
 	canvas.addEventListener("keydown",onKey,false);
 	canvas.addEventListener("keyup",onKey,false);
+	this.isAccelerometerSupported = window.DeviceMotionEvent != null && platform_html5_HTML5Extensions.load("LinearAccelerationSensor",window).instance != null;
+	if(this.isAccelerometerSupported) {
+		window.addEventListener("devicemotion",function(e3) {
+			var acceleration = e3.acceleration;
+			if(acceleration != null) {
+				_gthis.pos_x = acceleration.x;
+				_gthis.pos_y = acceleration.y;
+				_gthis.pos_z = acceleration.z;
+			}
+		},false);
+	}
 	var hiddenApi = platform_html5_HTML5Extensions.load("hidden",window.document);
 	if(hiddenApi.instance != null) {
 		var onVisibilityChanged = function(_) {
