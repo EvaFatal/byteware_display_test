@@ -1282,9 +1282,13 @@ Main.precache = function() {
 		});
 	}
 	if(App.platform.isAccelerometerSupported) {
-		App.ticker.add(function(_) {
-			state_accelerometer = "x: " + App.platform.pos_x + " y: " + App.platform.pos_y + " z: " + App.platform.pos_z;
-			update_text();
+		var c_elapsed = 0.0;
+		App.ticker.add(function(delta) {
+			c_elapsed += delta;
+			if(c_elapsed >= 0.5) {
+				state_accelerometer = "x: " + App.platform.pos_x + " y: " + App.platform.pos_y + " z: " + App.platform.pos_z;
+				update_text();
+			}
 		});
 	}
 };
@@ -5873,6 +5877,7 @@ platform_html5_HTML5Display.__name__ = ["platform","html5","HTML5Display"];
 platform_html5_HTML5Display.__super__ = platform_Display;
 platform_html5_HTML5Display.prototype = $extend(platform_Display.prototype,{
 	check_orientation_support: function() {
+		this.c_orientation_supported = true;
 	}
 	,requestFullscreen: function(state) {
 		if(!this.c_fullscreen_supported || this.isFullscreen == state) {
