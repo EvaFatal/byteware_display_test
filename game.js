@@ -1285,11 +1285,21 @@ Main.precache = function() {
 		var c_elapsed = 0.0;
 		App.ticker.add(function(delta) {
 			c_elapsed += delta;
-			if(c_elapsed >= 0.5) {
+			if(c_elapsed >= 1.0) {
 				state_accelerometer = "x: " + App.platform.pos_x + " y: " + App.platform.pos_y + " z: " + App.platform.pos_z;
 				update_text();
 			}
 		});
+	}
+	var offset_y = (App.HEIGHT - App.MIN_HEIGHT) * .5 + App.MIN_HEIGHT - 32;
+	Main.console_field = new TextField("micro_font",Main.console_text,480,16,Direction.CENTER,true,null,80,offset_y);
+	Main.console_field.set_isTouchable(false);
+	App.root.addChild(Main.console_field);
+};
+Main.log = function(text) {
+	Main.console_text = text;
+	if(Main.console_field != null) {
+		Main.console_field.set_text(Main.console_text);
 	}
 };
 Math.__name__ = ["Math"];
@@ -5910,10 +5920,14 @@ platform_html5_HTML5Display.prototype = $extend(platform_Display.prototype,{
 		}
 		switch(state[1]) {
 		case 0:case 1:
-			window.screen.orientation.lock(state == Orientation.LANDSCAPE ? "landscape" : "portrait");
+			window.screen.orientation.lock(state == Orientation.LANDSCAPE ? "landscape" : "portrait")["catch"](function(_) {
+				Main.log("Orientation lock does not work on this target!");
+			});
+			this.orientation = state;
 			break;
 		case 2:
 			window.screen.orientation.unlock();
+			this.orientation = state;
 			break;
 		case 3:
 			return this.requestOrientation(App.WIDTH >= App.HEIGHT ? Orientation.LANDSCAPE : Orientation.PORTRAIT);
@@ -6583,6 +6597,7 @@ App.TOP = 0;
 App.BOTTOM = 0;
 App.LEFT = 0;
 App.RIGHT = 0;
+Main.console_text = "";
 MathTools.E = 1e-6;
 MathTools.PI = 3.141592653589793;
 MathTools.PQ = 0.7853981633974483;
